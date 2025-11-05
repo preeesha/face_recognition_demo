@@ -30,12 +30,20 @@ function Recording() {
           );
           setRecordingStatus(response.data);
 
-          if (!response.data.is_recording) {
-            // Recording finished
+          // Check if recording finished AND upload complete
+          if (!response.data.is_recording && response.data.upload_complete) {
             setIsRecording(false);
             clearInterval(recordingIntervalRef.current);
-            stopStream(); // Clean up stream
-            alert("✅ Recording completed and uploaded!");
+            
+            // Show appropriate alert based on upload status
+            if (response.data.upload_status === "success") {
+              alert("✅ Recording completed and uploaded successfully!");
+            } else if (response.data.upload_status === "failed") {
+              alert("⚠️ Recording completed but upload failed!");
+            }
+            
+            // Keep stream running - don't stop it
+            // User can manually stop if needed
           }
         } catch (err) {
           console.error("Failed to fetch recording status:", err);
@@ -83,8 +91,8 @@ function Recording() {
       const url = `http://192.168.1.213:8000/video_feed?threshold=${threshold}&fps=15&t=${Date.now()}`;
       setStreamUrl(url);
 
-      // Small delay to let stream start
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Wait for stream to start
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Then start recording
       const response = await axios.post(
@@ -102,16 +110,18 @@ function Recording() {
       if (response.data.status === "started") {
         setIsRecording(true);
         setIsLoading(false);
+      } else {
+        throw new Error(response.data.message || "Failed to start recording");
       }
     } catch (err) {
       setIsLoading(false);
-      alert("❌ Failed to start recording: " + err.message);
+      setStreamUrl(""); // Clear stream on error
+      alert("❌ Failed to start recording: " + (err.response?.data?.message || err.message));
     }
   };
 
   const stopStream = async () => {
     try {
-      // Call backend to stop stream
       await axios.post("http://192.168.1.213:8000/stop_stream");
       console.log("✅ Stream stopped");
     } catch (err) {
@@ -124,14 +134,14 @@ function Recording() {
 
   const stopRecording = async () => {
     try {
-      await stopStream();
+      // Just stop the recording flag
       setIsRecording(false);
 
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current);
       }
 
-      alert("⚠️ Recording stopped early!");
+      alert("⚠️ Recording stopped early! Video may still be uploading.");
     } catch (err) {
       console.error("Failed to stop recording:", err);
     }
@@ -388,6 +398,22 @@ function Recording() {
           </div>
         )}
 
+        {/* Upload Status Indicator */}
+        {!isRecording && recordingStatus && recordingStatus.upload_status === "uploading" && (
+          <div
+            style={{
+              background: "#fff3cd",
+              padding: "15px",
+              borderRadius: "8px",
+              marginBottom: "15px",
+              border: "2px solid #ffc107",
+              textAlign: "center",
+            }}
+          >
+            <strong>📤 Uploading recording to server...</strong>
+          </div>
+        )}
+
         {/* Start/Stop Recording Button */}
         <div style={{ display: "flex", gap: "10px" }}>
           {!isRecording ? (
@@ -445,6 +471,31 @@ function Recording() {
               Stop Recording Early
             </button>
           )}
+          
+          {/* Stop Stream Button (when stream is active but not recording) */}
+          {streamUrl && !isRecording && !isLoading && (
+            <button
+              onClick={stopStream}
+              style={{
+                padding: "15px 30px",
+                backgroundColor: "#6c757d",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "18px",
+                fontWeight: "bold",
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+              }}
+            >
+              <span style={{ fontSize: "24px" }}>🛑</span>
+              Stop Stream
+            </button>
+          )}
         </div>
 
         {databaseInfo && databaseInfo.users_count === 0 && (
@@ -476,7 +527,7 @@ function Recording() {
           border: isRecording ? "3px solid #dc3545" : "1px solid #ddd",
         }}
       >
-        {streamUrl && (isRecording || isLoading) ? (
+        {streamUrl ? (
           <div style={{ position: "relative", width: "100%" }}>
             <img
               ref={imgRef}
@@ -495,12 +546,13 @@ function Recording() {
                 alert(
                   "❌ Failed to connect to camera stream. Check Raspberry Pi connection."
                 );
-                stopRecording();
+                setStreamUrl("");
+                setIsLoading(false);
               }}
             />
 
             {/* Recording Indicator Overlay */}
-            {isRecording && (
+            {isRecording && recordingStatus && (
               <>
                 <div
                   style={{
@@ -606,11 +658,12 @@ function Recording() {
             Adjust threshold and duration before starting (cannot change during
             recording)
           </li>
-          <li>Recording uses fixed 15 FPS for consistent quality</li>
+          <li>Stream stays active after recording completes</li>
           <li>Recording stops automatically after the set duration</li>
           <li>
             You can stop recording early by clicking "Stop Recording Early"
           </li>
+          <li>Use "Stop Stream" button to close the camera feed</li>
           <li>Make sure you're on the same network as the Raspberry Pi</li>
         </ul>
       </div>
