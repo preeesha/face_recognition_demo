@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import "./LiveRecognition.css";
+import "../styles/LiveRecognition.css";
 
 function LiveRecognition() {
   const [isStreaming, setIsStreaming] = useState(false);
