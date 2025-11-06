@@ -1,7 +1,3 @@
-// =========================================
-// backend/server.js (FIXED VERSION)
-// =========================================
-
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -15,9 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-// =========================================
-// 📁 Directories Setup
-// =========================================
+
 const DATASET_DIR = path.join(__dirname, "dataset");
 const RECORDINGS_DIR = path.join(__dirname, "uploaded_recordings");
 
@@ -276,10 +270,6 @@ app.get("/", (req, res) => {
       download_recording: "GET /recording/:filename",
       delete_recording: "DELETE /recording/:filename"
     },
-    directories: {
-      datasets: DATASET_DIR,
-      recordings: RECORDINGS_DIR
-    }
   });
 });
 
@@ -287,9 +277,7 @@ app.get("/", (req, res) => {
 // 🚀 Start Server
 // =========================================
 app.listen(8080, () => {
-  console.log("\n╔═══════════════════════════════════════════════════════╗");
-  console.log("║  🚀 Express Server Started                            ║");
-  console.log("╚═══════════════════════════════════════════════════════╝");
+  console.log("\nExpress server started");
   console.log(`\n📍 Server running on http://localhost:8080`);
   console.log(`📁 Dataset directory: ${DATASET_DIR}`);
   console.log(`🎥 Recordings directory: ${RECORDINGS_DIR}`);
