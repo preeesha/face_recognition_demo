@@ -3,6 +3,7 @@ import path from "path";
 import archiver from "archiver";
 import axios from "axios";
 import FormData from "form-data";
+import db from "../config/database.js";
 import { DATASET_DIR } from "../config/paths.js";
 
 export async function uploadDataset(req, res) {
@@ -60,6 +61,15 @@ export async function sendDatasetToPi(req, res) {
     });
   } catch (err) {
     console.error("❌ send-to-pi failed:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function get_recordings(req, res){
+  try {
+    const rows = db.prepare("SELECT * FROM recordings ORDER BY timestamp DESC").all();
+    res.json(rows);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 }

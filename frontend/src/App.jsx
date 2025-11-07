@@ -3,6 +3,7 @@ import Webcam from "react-webcam";
 import axios from "axios";
 import LiveRecognition from "./components/LiveRecognition";
 import Recording from "./components/Recording";
+import RecordingsList from "./components/RecordingsList";
 import "./App.css";
 
 function App() {
@@ -37,7 +38,7 @@ function App() {
       setCapturedImages((prev) => [...prev, imageSrc]);
 
       try {
-        await axios.post("http://localhost:8080/upload", {
+        await axios.post("http://localhost:8080/api/upload", {
           name: personName,
           image: imageSrc,
           index: i + 1,
@@ -53,7 +54,7 @@ function App() {
     alert(`✅ Done capturing 20 images for ${personName}`);
 
     try {
-      await axios.post("http://localhost:8080/send-to-pi", { name: personName });
+      await axios.post("http://localhost:8080/api/send-to-pi", { name: personName });
       alert(`📦 Dataset for ${personName} sent to Raspberry Pi successfully!`);
     } catch (err) {
       alert("❌ Failed to send dataset to Raspberry Pi: " + err.message);
@@ -95,6 +96,12 @@ function App() {
           className={`tab-btn ${activeTab === "recording" ? "active" : ""}`}
         >
           🎬 Recording
+        </button>
+        <button
+          onClick={() => setActiveTab("recordings")}
+          className={`tab-btn ${activeTab === "recordings" ? "active" : ""}`}
+        >
+          📋 Recordings
         </button>
       </div>
 
@@ -182,6 +189,7 @@ function App() {
 
       {activeTab === "recognition" && <LiveRecognition />}
       {activeTab === "recording" && <Recording />}
+      {activeTab === "recordings" && <RecordingsList />}
     </div>
   );
 }

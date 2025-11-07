@@ -11,8 +11,77 @@ const storage = multer.diskStorage({
 });
 export const upload = multer({ storage });
 
+export function getRecordingsList(req, res) {
+  try {
+    const select = db.prepare(`
+      SELECT filename, filepath, file_size_mb, timestamp, actual_duration, actual_fps, total_unique_persons, detected_persons, resolution, codec, threshold
+      FROM recordings
+      ORDER BY timestamp DESC
+    `);
+    const recordings = select.all();
+    res.status(200).json({ recordings });
+  } catch (err) {
+    console.error("❌ Error fetching recordings list:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export function getRecordingDetails(req, res) {
+  try {
+    const { filename } = req.params;
+    const select = db.prepare(`
+      SELECT * FROM recordings WHERE filename = ?
+    `);
+    const recording = select.get(filename);
+    if (!recording) {
+      return res.status(404).json({ error: "Recording not found" });
+    }
+    // Parse JSON fields
+    recording.detected_persons = JSON.parse(recording.detected_persons || '[]');
+    recording.person_times = JSON.parse(recording.person_times || '[]');
+    res.status(200).json({ recording });
+  } catch (err) {
+    console.error("❌ Error fetching recording details:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export function deleteRecording(req, res) {
+  try {
+    const { filename } = req.params;
+    const select = db.prepare(`SELECT filepath FROM recordings WHERE filename = ?`);
+    const recording = select.get(filename);
+    if (!recording) {
+      return res.status(404).json({ error: "Recording not found" });
+    }
+
+    // Delete from database
+    const deleteStmt = db.prepare(`DELETE FROM recordings WHERE filename = ?`);
+    deleteStmt.run(filename);
+
+    // Delete file and metadata if they exist
+    try {
+      if (fs.existsSync(recording.filepath)) {
+        fs.unlinkSync(recording.filepath);
+      }
+      const metaPath = path.join(RECORDINGS_DIR, filename.replace(".avi", "_metadata.json"));
+      if (fs.existsSync(metaPath)) {
+        fs.unlinkSync(metaPath);
+      }
+    } catch (fileErr) {
+      console.error("⚠️ Error deleting files:", fileErr);
+    }
+
+    console.log(`🗑️ Recording deleted: ${filename}`);
+    res.status(200).json({ message: "Recording deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting recording:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
 export function uploadRecording(req, res) {
- try {
+  try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     let metadata = {};
@@ -55,7 +124,7 @@ export function uploadRecording(req, res) {
 
     try {
       const insert = db.prepare(`
-        INSERT OR REPLACE INTO recordings 
+        INSERT OR REPLACE INTO recordings
         (filename, filepath, file_size_mb, timestamp, actual_duration, actual_fps, total_unique_persons, detected_persons, person_times, resolution, codec, threshold)
         VALUES (@filename, @filepath, @file_size_mb, @timestamp, @actual_duration, @actual_fps, @total_unique_persons, @detected_persons, @person_times, @resolution, @codec, @threshold)
       `);
@@ -91,5 +160,4 @@ export function uploadRecording(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
-
 
