@@ -6,7 +6,7 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const dbPath = path.join(__dirname, "recordings.db");
+const dbPath = path.join(__dirname, "../recordings.db");
 const db = new Database(dbPath);
 
 db.prepare(`

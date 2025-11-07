@@ -76,7 +76,7 @@ function Recording() {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const response = await axios.post("http://192.168.1.213:8000/start_recording", null, {
-        params: { duration: recordingDuration, threshold, fps: 4 },
+        params: { duration: recordingDuration, threshold, fps: 10 },
       });
 
       if (response.data.status === "started") {
